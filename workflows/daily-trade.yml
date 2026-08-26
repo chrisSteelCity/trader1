@@ -1,1 +1,48 @@
+# Save this file as .github/workflows/daily-trade.yml in your repo.
+#
+# Runs the paper-trading agent every weekday after US market close,
+# then commits the updated portfolio.json / trade_log.csv back to the repo
+# so state persists between runs (GitHub Actions runners are stateless).
+#
+# Setup:
+#   1. Push this project to a GitHub repo.
+#   2. In the repo: Settings -> Secrets and variables -> Actions -> New repository secret
+#        Name: ANTHROPIC_API_KEY
+#        Value: <your key>
+#   3. Settings -> Actions -> General -> Workflow permissions -> "Read and write permissions"
+#      (needed so the workflow can commit portfolio.json back)
+
+name: Daily paper trading agent
+
+on:
+  schedule:
+    # 21:30 UTC = 4:30pm ET (market close), Mon-Fri. Adjust for your timezone / DST.
+    - cron: "30 21 * * 1-5"
+  workflow_dispatch: {}   # lets you trigger it manually from the Actions tab too
+
+jobs:
+  trade:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run daily agent
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python daily_run.py
+
+      - name: Commit updated portfolio state
+        run: |
+          git config user.name "trading-agent-bot"
+          git config user.email "actions@github.com"
+          git add portfolio.json trade_log.csv
+          git diff --staged --quiet || git commit -m "Daily trade run: $(date +%Y-%m-%d)"
+          git push
 
