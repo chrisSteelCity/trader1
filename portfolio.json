@@ -224,6 +224,20 @@
       "cash": 231.76,
       "positions_value": 9748.57,
       "benchmark_price": 771.8599853515625
+    },
+    {
+      "date": "2026-08-27",
+      "total_value": 9969.94,
+      "cash": 231.76,
+      "positions_value": 9738.18,
+      "benchmark_price": 769.9749755859375
+    },
+    {
+      "date": "2026-08-27",
+      "total_value": 9973.86,
+      "cash": 231.76,
+      "positions_value": 9742.1,
+      "benchmark_price": 769.4299926757812
     }
   ]
 }
