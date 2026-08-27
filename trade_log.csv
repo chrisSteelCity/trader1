@@ -1,0 +1,12 @@
+date,ticker,action,shares,price,status,why,reason
+2026-08-27,FCX,buy,19,79.0,executed,,"Steady, near-monotonic 10-day uptrend (+18%) in copper miner; no signs of a blow-off spike, just consistent grind higher."
+2026-08-27,NEM,buy,11,131.60000610351562,executed,,"Consistent 10-day uptrend (+15%) in gold miner with only minor pullbacks, suggesting sustained demand rather than a one-day pop."
+2026-08-27,DASH,buy,6,236.92999267578125,executed,,"Smooth, almost uninterrupted climb over 10 days (+9.6%), among the least choppy uptrends in the candidate list."
+2026-08-27,TRGP,buy,5,294.0299987792969,executed,,"Steady energy-infrastructure uptrend (+10%) with shallow pullbacks, adds sector diversification away from metals."
+2026-08-27,CTVA,buy,12,82.87999725341797,executed,,"Gradual, low-volatility 10-day uptrend (+9.4%) in ag inputs; least commodity-price-driven of the group, further diversifying the basket."
+2026-08-27,FCX,buy,7,78.93499755859375,executed,,"Uptrend has flattened at highs (79 area) rather than reversing — consolidation, not exhaustion. Topping up within cap."
+2026-08-27,NEM,buy,4,132.88999938964844,executed,,Still grinding to new highs (133.09 today) with no reversal signal. Adding to a working position.
+2026-08-27,DASH,buy,2,233.0800018310547,executed,,Minor one-day pullback (236.93->233.08) inside an otherwise smooth uptrend — not a trend change. Small add.
+2026-08-27,CTVA,buy,6,82.06500244140625,executed,,"Uptrend intact with only a shallow 2-day pullback; still the least commodity-correlated name in the book, worth building out further."
+2026-08-27,IQV,buy,2,264.0,executed,,"New position: one of the smoothest uptrends in today's candidates (+11.6% over 10 days with almost no down days), adds healthcare-services exposure."
+2026-08-27,RVTY,buy,3,128.55999755859375,executed,,"New position: steady staircase climb (+10% over 10 days, minimal volatility), adds life-sciences-tools diversification."

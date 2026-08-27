@@ -3,6 +3,15 @@ Shared yfinance fetch helpers used by prepare_data.py.
 """
 
 import yfinance as yf
+from curl_cffi import requests as _curl_requests
+
+# yfinance's default curl_cffi impersonation profile ("chrome", which maps to
+# the newest Chrome fingerprint) gets TLS connection resets in this sandbox's
+# egress path. chrome110 was verified working via direct probing, so build a
+# session pinned to it and pass it through explicitly rather than relying on
+# yfinance's default.
+def _new_yf_session():
+    return _curl_requests.Session(impersonate="chrome110")
 
 BATCH_SIZE = 50  # yfinance bulk downloads get slower/flakier past a few hundred tickers
 
@@ -18,7 +27,7 @@ def fetch_prices(tickers):
     prices = {}
     for batch in _batches(tickers):
         try:
-            data = yf.download(batch, period="1d", progress=False)["Close"]
+            data = yf.download(batch, period="1d", progress=False, session=_new_yf_session())["Close"]
         except Exception:
             continue
         if len(batch) == 1:
@@ -40,7 +49,7 @@ def fetch_recent_history(tickers, days=10):
     hist = {}
     for batch in _batches(tickers):
         try:
-            data = yf.download(batch, period=f"{days}d", progress=False)["Close"]
+            data = yf.download(batch, period=f"{days}d", progress=False, session=_new_yf_session())["Close"]
         except Exception:
             continue
         for t in batch:
