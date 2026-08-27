@@ -19,7 +19,7 @@ import config
 
 def load_portfolio():
     if os.path.exists(config.PORTFOLIO_FILE):
-        with open(config.PORTFOLIO_FILE, "r") as f:
+        with open(config.PORTFOLIO_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
     # First run: initialize a fresh paper account
     return {
@@ -31,8 +31,8 @@ def load_portfolio():
 
 
 def save_portfolio(portfolio):
-    with open(config.PORTFOLIO_FILE, "w") as f:
-        json.dump(portfolio, f, indent=2)
+    with open(config.PORTFOLIO_FILE, "w", encoding="utf-8") as f:
+        json.dump(portfolio, f, indent=2, ensure_ascii=False)
 
 
 def positions_value(portfolio, prices):

@@ -56,8 +56,8 @@ def main():
         "benchmark_ticker": config.BENCHMARK_TICKER,
     }
 
-    with open(OUTPUT_FILE, "w") as f:
-        json.dump(data, f, indent=2)
+    with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
 
     print(f"Wrote {OUTPUT_FILE}: {len(candidates)} candidates, "
           f"portfolio value ${port_value:,.2f}, cash ${portfolio['cash']:,.2f}")

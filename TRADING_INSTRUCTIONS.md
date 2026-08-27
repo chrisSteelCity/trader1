@@ -72,10 +72,20 @@ the proposal — then executes what's valid, updates `portfolio.json` and
 rejected, note why (informational only — do not retry rejected trades this
 run).
 
-## 5. Commit the updated state
+## 5. Regenerate the report
 
 ```bash
-git add portfolio.json trade_log.csv
+python generate_report.py
+```
+
+This writes `REPORT.md` — a plain-language summary (performance vs. the
+benchmark, current holdings with gain/loss, recent trades) readable directly
+on GitHub. Commit it alongside the state files.
+
+## 6. Commit the updated state
+
+```bash
+git add portfolio.json trade_log.csv REPORT.md
 git commit -m "Trade run: $(date +%Y-%m-%d) $(date +%H:%M) ET"
 git push
 ```

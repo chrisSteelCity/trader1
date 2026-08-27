@@ -37,7 +37,7 @@ DATA_FILE = "today_data.json"
 
 def append_trade_log_csv(results):
     file_exists = os.path.exists(config.TRADE_LOG_FILE)
-    with open(config.TRADE_LOG_FILE, "a", newline="") as f:
+    with open(config.TRADE_LOG_FILE, "a", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(
             f, fieldnames=["date", "ticker", "action", "shares", "price", "status", "why", "reason"]
         )
@@ -62,13 +62,13 @@ def main():
         sys.exit(1)
 
     decision_file = sys.argv[1]
-    with open(decision_file, "r") as f:
+    with open(decision_file, "r", encoding="utf-8") as f:
         decision = json.load(f)
 
     if not os.path.exists(DATA_FILE):
         print(f"{DATA_FILE} not found — run prepare_data.py first.")
         sys.exit(1)
-    with open(DATA_FILE, "r") as f:
+    with open(DATA_FILE, "r", encoding="utf-8") as f:
         today_data = json.load(f)
 
     if today_data["date"] != date.today().isoformat():

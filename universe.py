@@ -37,7 +37,7 @@ def _fetch_live():
 def _load_cache():
     if not os.path.exists(CACHE_FILE):
         return None
-    with open(CACHE_FILE, "r") as f:
+    with open(CACHE_FILE, "r", encoding="utf-8") as f:
         cache = json.load(f)
     age_days = (time.time() - cache["fetched_at"]) / 86400
     if age_days > CACHE_MAX_AGE_DAYS:
@@ -46,7 +46,7 @@ def _load_cache():
 
 
 def _save_cache(tickers):
-    with open(CACHE_FILE, "w") as f:
+    with open(CACHE_FILE, "w", encoding="utf-8") as f:
         json.dump({"fetched_at": time.time(), "tickers": tickers}, f, indent=2)
 
 
