@@ -10,3 +10,5 @@ date,ticker,action,shares,price,status,why,reason
 2026-08-27,CTVA,buy,6,82.06500244140625,executed,,"Uptrend intact with only a shallow 2-day pullback; still the least commodity-correlated name in the book, worth building out further."
 2026-08-27,IQV,buy,2,264.0,executed,,"New position: one of the smoothest uptrends in today's candidates (+11.6% over 10 days with almost no down days), adds healthcare-services exposure."
 2026-08-27,RVTY,buy,3,128.55999755859375,executed,,"New position: steady staircase climb (+10% over 10 days, minimal volatility), adds life-sciences-tools diversification."
+2026-08-27,TRGP,sell,2,290.55499267578125,executed,,Continued lower highs since entry (302.25 -> 294.03 -> 290.55) — the one holding showing an actual downtrend rather than a pause. Trimming rather than fully exiting since the move down has been shallow.
+2026-08-27,CTSH,buy,9,64.12000274658203,executed,,"New position: smooth, low-volatility 10-day climb (+9.75%) with only one minor dip, funded by the TRGP trim. Adds IT-services exposure uncorrelated with the existing metals/ag/healthcare mix."
