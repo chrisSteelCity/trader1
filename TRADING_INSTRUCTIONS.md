@@ -122,12 +122,16 @@ python generate_report.py
 
 This writes `REPORT.md` — a plain-language summary (performance vs. the
 benchmark, current holdings with gain/loss, recent trades) readable directly
-on GitHub. Commit it alongside the state files.
+on GitHub — and `performance_chart.svg`, a line chart of portfolio return vs.
+benchmark return over time that `REPORT.md` embeds. The chart is an SVG
+(plain-text XML), not a PNG, so it can be committed as a text file through
+the same tools used for everything else in this repo. Commit both alongside
+the state files.
 
 ## 6. Commit the updated state
 
 ```bash
-git add portfolio.json trade_log.csv REPORT.md
+git add portfolio.json trade_log.csv REPORT.md performance_chart.svg
 git commit -m "Trade run: $(date +%Y-%m-%d) $(date +%H:%M) ET"
 git push
 ```

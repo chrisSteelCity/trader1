@@ -1,17 +1,27 @@
 """
 Writes REPORT.md — a plain-language summary of portfolio performance, current
 holdings, and recent trades, meant to be committed to the repo so it's
-readable directly on GitHub without running anything.
+readable directly on GitHub without running anything. Also writes
+performance_chart.svg (portfolio value vs. benchmark over time) and embeds
+it in the report. SVG (not PNG) is used deliberately: it's plain-text XML,
+so it can be committed through the same text-based file tools as every
+other file in this repo, with no binary-encoding risk.
 
     python generate_report.py
 
-Run this after apply_trades.py, then commit REPORT.md along with
-portfolio.json / trade_log.csv (see TRADING_INSTRUCTIONS.md).
+Run this after apply_trades.py, then commit REPORT.md and
+performance_chart.svg along with portfolio.json / trade_log.csv (see
+TRADING_INSTRUCTIONS.md).
 """
+
+import matplotlib
+matplotlib.use("Agg")  # headless — this runs in a script, not a GUI session
+import matplotlib.pyplot as plt
 
 from reporting import build_report_data
 
 OUTPUT_FILE = "REPORT.md"
+CHART_FILE = "performance_chart.svg"
 
 
 def _fmt_money(x):
@@ -20,6 +30,36 @@ def _fmt_money(x):
 
 def _fmt_pct(x):
     return f"{x:+.2f}%" if x is not None else "n/a"
+
+
+def render_chart(data, output_path):
+    """Saves an SVG line chart of portfolio return vs. benchmark return over
+    time, one point per daily_history entry (i.e. one per run, not
+    necessarily one per calendar day)."""
+    history = data["history"]
+    start_value = data["start_value"]
+    start_benchmark = history[0]["benchmark_price"]
+
+    labels = [f"{h['date']} #{i + 1}" for i, h in enumerate(history)]
+    port_returns = [(h["total_value"] / start_value - 1) * 100 for h in history]
+    bench_returns = [
+        (h["benchmark_price"] / start_benchmark - 1) * 100 if h["benchmark_price"] and start_benchmark else 0
+        for h in history
+    ]
+
+    fig, ax = plt.subplots(figsize=(9, 5))
+    ax.plot(labels, port_returns, label="Portfolio", linewidth=2, marker="o", markersize=4)
+    ax.plot(labels, bench_returns, label=data["bench_ticker"], linewidth=2, linestyle="--",
+             marker="o", markersize=4)
+    ax.axhline(0, color="gray", linewidth=0.8, linestyle=":")
+    ax.set_ylabel("Return since inception (%)")
+    ax.set_title("Paper trading portfolio vs. benchmark")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    plt.xticks(rotation=45, ha="right")
+    fig.tight_layout()
+    fig.savefig(output_path, dpi=150)
+    plt.close(fig)
 
 
 def render(data):
@@ -42,6 +82,8 @@ def render(data):
     lines.append("")
 
     lines.append("## Value over time")
+    lines.append("")
+    lines.append(f"![Portfolio performance vs {data['bench_ticker']}]({CHART_FILE})")
     lines.append("")
     lines.append("| Date | Portfolio value | Return | " + data["bench_ticker"] + " return |")
     lines.append("|---|---:|---:|---:|")
@@ -95,10 +137,12 @@ def main():
         print("No history yet — run prepare_data.py + apply_trades.py at least once first.")
         return
 
+    render_chart(data, CHART_FILE)
+
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
         f.write(render(data))
 
-    print(f"Wrote {OUTPUT_FILE}")
+    print(f"Wrote {OUTPUT_FILE} and {CHART_FILE}")
 
 
 if __name__ == "__main__":
