@@ -16,6 +16,7 @@ TRADING_INSTRUCTIONS.md).
 
 import matplotlib
 matplotlib.use("Agg")  # headless — this runs in a script, not a GUI session
+matplotlib.rcParams["svg.fonttype"] = "none"  # keep the SVG as compact text elements, not embedded glyph outlines
 import matplotlib.pyplot as plt
 
 from reporting import build_report_data
