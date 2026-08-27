@@ -1,3 +1,5 @@
 sp500_cache.json
+today_data.json
+decision.json
 __pycache__/
 *.pyc
