@@ -1,1 +1,89 @@
+# Save this file as .github/workflows/daily-trade.yml in your repo.
+#
+# Runs the paper-trading agent 3x per weekday (market open, midday, and
+# shortly before market close), then commits the updated portfolio.json /
+# trade_log.csv back to the repo so state persists between runs (GitHub
+# Actions runners are stateless).
+#
+# Setup:
+#   1. Push this project to a GitHub repo.
+#   2. In the repo: Settings -> Secrets and variables -> Actions -> New repository secret
+#        Name: ANTHROPIC_API_KEY
+#        Value: <your key>
+#   3. Settings -> Actions -> General -> Workflow permissions -> "Read and write permissions"
+#      (needed so the workflow can commit portfolio.json back)
+#
+# Timing note: GitHub Actions cron always runs in UTC and can't natively
+# follow US/Eastern + daylight saving. Instead, this schedules cron triggers
+# for BOTH the EST and EDT UTC-equivalent of each target ET time, and the
+# first job step checks the actual current US/Eastern wall-clock time and
+# skips the run if it isn't within a few minutes of one of the 3 intended
+# slots (open / midday / close) — so exactly one of each pair actually runs,
+# whichever matches the current DST state, without any manual clock changes.
+
+name: Daily paper trading agent
+
+on:
+  schedule:
+    # --- Market open (~9:35am ET) ---
+    - cron: "35 13 * * 1-5"   # 9:35am EDT (UTC-4, roughly mid-Mar to early Nov)
+    - cron: "35 14 * * 1-5"   # 9:35am EST (UTC-5, roughly early Nov to mid-Mar)
+    # --- Midday (~12:30pm ET) ---
+    - cron: "30 16 * * 1-5"   # 12:30pm EDT
+    - cron: "30 17 * * 1-5"   # 12:30pm EST
+    # --- Before market close (~3:55pm ET) ---
+    - cron: "55 19 * * 1-5"   # 3:55pm EDT
+    - cron: "55 20 * * 1-5"   # 3:55pm EST
+  workflow_dispatch: {}   # lets you trigger it manually from the Actions tab too
+
+jobs:
+  trade:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip if not an intended ET run time
+        run: |
+          et_time=$(TZ="America/New_York" date +%H:%M)
+          et_minutes=$((10#${et_time%%:*} * 60 + 10#${et_time##*:}))
+
+          in_window() {
+            target=$((10#${1%%:*} * 60 + 10#${1##*:}))
+            diff=$(( et_minutes - target ))
+            [ $diff -lt 0 ] && diff=$((-diff))
+            [ "$diff" -le 30 ]
+          }
+
+          if in_window "09:35" || in_window "12:30" || in_window "15:55"; then
+            echo "Current ET time $et_time is within a target run window — proceeding."
+          else
+            echo "Current ET time $et_time is not within 30 minutes of an intended run (09:35, 12:30, 15:55 ET) — skipping (this is the redundant DST-offset trigger)."
+            echo "SKIP_RUN=true" >> "$GITHUB_ENV"
+          fi
+
+      - uses: actions/checkout@v4
+        if: env.SKIP_RUN != 'true'
+
+      - uses: actions/setup-python@v5
+        if: env.SKIP_RUN != 'true'
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        if: env.SKIP_RUN != 'true'
+        run: pip install -r requirements.txt
+
+      - name: Run trading agent
+        if: env.SKIP_RUN != 'true'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python daily_run.py
+
+      - name: Commit updated portfolio state
+        if: env.SKIP_RUN != 'true'
+        run: |
+          git config user.name "trading-agent-bot"
+          git config user.email "actions@github.com"
+          git add portfolio.json trade_log.csv
+          run_time=$(TZ="America/New_York" date "+%Y-%m-%d %H:%M ET")
+          git diff --staged --quiet || git commit -m "Trade run: $run_time"
+          git push
 
