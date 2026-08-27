@@ -18,7 +18,9 @@ anywhere and no code that calls the Anthropic SDK. Instead, Claude makes the
 trade decision directly inside a Claude.ai session that has a GitHub
 connector to this repo (e.g. a scheduled Cowork-style session on a Pro plan),
 running up to a few times per weekday. See `TRADING_INSTRUCTIONS.md` for the
-exact procedure that session follows.
+exact procedure that session follows. There's also a `decide_trades.py`
+fallback (a fixed scoring rule, not an LLM) for fully unattended runs — see
+the portal section below.
 
 ## Files
 - `config.py` — starting cash, watchlist, risk limits
@@ -26,9 +28,12 @@ exact procedure that session follows.
 - `market_data.py` — shared yfinance fetch/candidate-selection helpers
 - `portfolio.py` — portfolio state + trade validation/execution logic
 - `prepare_data.py` — step 1: fetches today's prices/history, writes `today_data.json`
+- `decide_trades.py` — algorithmic (non-LLM) trade decision, for unattended runs
 - `apply_trades.py` — step 3: validates + executes a trade decision against the portfolio
+- `generate_report.py` — writes `REPORT.md` + `performance_chart.svg` (readable on GitHub)
 - `TRADING_INSTRUCTIONS.md` — the procedure Claude follows each scheduled run
-- `report.py` — prints performance so far, optional chart
+- `report.py` — prints performance so far, to the terminal
+- `portal.py` / `portal_static/` — local browser dashboard (see below)
 
 ## 1. Local setup
 
@@ -46,7 +51,7 @@ python prepare_data.py          # fetches prices/history -> today_data.json
 # ... decide trades, write decision.json in the shape TRADING_INSTRUCTIONS.md describes ...
 python apply_trades.py decision.json   # validates + executes -> updates portfolio.json
 python report.py                # see performance so far
-python report.py --chart        # also saves performance_chart.png
+python generate_report.py       # writes REPORT.md + performance_chart.svg
 ```
 
 Do this a few times on different days to build up history before trusting it
@@ -68,22 +73,46 @@ make sense to you.
 There is no GitHub Actions workflow in this repo — automation runs through
 the Claude.ai connector/session itself, not CI.
 
+## 4. Browse it and run it by hand from a local dashboard
+
+```bash
+pip install -r requirements.txt
+python portal.py
+```
+
+Then open `http://localhost:5000`. It's a small local Flask app — nothing
+here talks to GitHub or any external service, it just reads the files in
+this folder and runs the existing scripts as subprocesses:
+
+- **Refresh market data** — re-fetches prices/fundamentals and marks the
+  portfolio to market (adds a no-trade snapshot to the performance chart).
+  No trades are proposed or executed.
+- **Run full pipeline** — does the same, then runs `decide_trades.py` (a
+  fixed, transparent scoring rule — see that file's docstring) to propose
+  trades, and executes whatever clears the risk checks in `apply_trades.py`.
+  This is a mechanical stand-in for the "read `today_data.json` and decide"
+  step in `TRADING_INSTRUCTIONS.md`, which normally takes a person or an LLM
+  session reading it — treat its trades as a fixed-rule proposal, not
+  investment reasoning.
+
 ## How performance tracking works
 
 Each run appends a snapshot to `portfolio.json`'s `daily_history`: total
 value, cash, positions value, and the benchmark's price that day. `report.py`
-reads that history to compute your return vs. SPY's return since day one.
-`trade_log.csv` has a row for every trade attempt (executed or rejected, with
-why).
+(and the portal) reads that history to compute your return vs. SPY's return
+since day one. `trade_log.csv` has a row for every trade attempt (executed or
+rejected, with why).
 
 ## Notes and honest caveats
 
 - This is a simulation for learning/tracking purposes, not investment advice,
-  and Claude's daily picks are not a validated trading strategy — treat
-  the results as an experiment, not a signal to trade real money.
+  and neither Claude's daily picks nor `decide_trades.py`'s fixed rule are a
+  validated trading strategy — treat the results as an experiment, not a
+  signal to trade real money.
 - Risk limits (position size cap, cash buffer, daily trade cap) are enforced
   in `portfolio.py`, not just requested from Claude, so they can't be talked
-  around by the model's own reasoning.
+  around by the model's own reasoning, and apply the same way to
+  `decide_trades.py`'s proposals.
 - Price data comes from `yfinance` (Yahoo Finance), which is free but
   occasionally has outages or delisted-ticker quirks — worth skimming
   `prepare_data.py`'s output periodically for tickers that silently failed
