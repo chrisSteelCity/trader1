@@ -16,7 +16,16 @@ TRADE_LOG_FILE = "trade_log.csv"   # append-only log of every executed trade
 # full list would be far too large to put in a single prompt.
 import universe
 WATCHLIST = universe.get_sp500_tickers()
-CANDIDATE_COUNT = 40  # how many tickers get full history + a prompt slot each day
+CANDIDATE_COUNT = 40  # how many tickers get full fundamentals + history + a prompt slot each day
+
+# How many tickers get pulled into the fundamentals-fetch pool before ranking
+# down to CANDIDATE_COUNT. yfinance has no bulk endpoint for fundamentals
+# (.info is one HTTP request per ticker, ~1s each), so fetching fundamentals
+# for the full ~500-name WATCHLIST every run isn't practical — this bounds
+# the pool to a price-movement pre-filter first (see market_data.pick_candidates),
+# then prepare_data.py ranks that pool by fundamental quality and keeps the
+# top CANDIDATE_COUNT (always including anything currently held).
+PRESCREEN_COUNT = 80
 
 # --- Benchmark for comparison ---
 BENCHMARK_TICKER = "SPY"

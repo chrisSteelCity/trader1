@@ -19,26 +19,68 @@ Run:
 python prepare_data.py
 ```
 
-This fetches current prices and 10-day history, narrows the S&P 500 down to
-today's candidates (biggest movers + anything currently held), and writes
-`today_data.json`. It does not decide or execute anything.
+This fetches current prices and 10-day history for the full watchlist,
+narrows that down to a price-movement prescreen pool, fetches fundamentals
+for that pool, and ranks it by fundamental quality down to today's final
+candidates. It writes `today_data.json`. It does not decide or execute
+anything.
 
 ## 2. Read `today_data.json` and decide trades
 
 Read the file. It contains:
 - `cash`, `positions`, `portfolio_value` — current account state
-- `candidates` — the only tickers you may trade today
+- `candidates` — the only tickers you may trade today (already narrowed by
+  fundamental quality, not just price movement — see below)
 - `prices` — current price for each candidate (+ the benchmark)
 - `history` — last 10 trading days of closes per candidate
+- `fundamentals` — per-candidate valuation, profitability, growth, leverage,
+  and analyst-sentiment data pulled from Yahoo Finance (see field list below)
 - `rules` — the risk limits (also enforced independently in step 3, so
   there's no point proposing trades that violate them — they'll just be
   rejected)
 
-Decide whether to buy, sell, or hold, the same way a disciplined paper-trading
-desk would: form a short thesis per trade from the price/trend data given
-(don't invent information not present in `today_data.json`), size positions
-sensibly within `max_position_pct`, and don't feel obligated to trade if
-nothing looks good — an empty trade list is a valid, often correct, decision.
+### How to weigh fundamentals vs. price history
+
+Fundamentals are the primary lens now — use them to judge whether a business
+is even worth holding, the way a real investment desk would, before looking
+at recent price action at all:
+
+- **Valuation** — `trailingPE`, `forwardPE`, `priceToBook`, `enterpriseToEbitda`,
+  `pegRatio`. Is the price reasonable relative to earnings/growth, not just
+  "is it going up"?
+- **Profitability & quality** — `returnOnEquity`, `returnOnAssets`,
+  `profitMargins`, `operatingMargins`. Efficient, consistently profitable
+  businesses are the default preference.
+- **Growth** — `revenueGrowth`, `earningsGrowth`.
+- **Cash generation** — `freeCashflow`, `totalCash`. Cash is harder to
+  manufacture with accounting choices than reported earnings.
+- **Balance-sheet health / leverage** — `debtToEquity`, `currentRatio`,
+  `quickRatio`. The closest free proxy to real creditworthiness (actual
+  credit ratings from Moody's/S&P aren't available without a paid data
+  vendor — treat this as a stand-in, not the real thing).
+- **Analyst sentiment** — `recommendationKey`, `recommendationMean` (1 =
+  strong buy … 5 = strong sell), `targetMeanPrice`, `numberOfAnalystOpinions`.
+  Aggregates Street research you otherwise can't access directly.
+- **Dividend/capital return** — `dividendYield`, `payoutRatio`.
+- **Liquidity & risk sizing** — `marketCap`, `averageVolume`, `beta`.
+
+Only *after* forming a view on the business itself should you use `history`
+(the 10-day price trend) — and only for timing: among names that clear the
+fundamentals bar, prefer entries that aren't chasing a one-day spike, and
+treat a multi-day trend reversal in a held position as a reason to revisit it
+sooner rather than waiting.
+
+Any fundamentals field can be `null` — Yahoo's coverage has real gaps,
+especially for smaller or newer listings. Reason with whatever is available
+for a given ticker rather than requiring every field, and don't treat a
+missing field as a red flag on its own.
+
+Decide whether to buy, sell, or hold, the same way a disciplined desk would:
+form a short thesis per trade grounded in the fundamentals (and price data
+where relevant) actually given in `today_data.json` — don't invent numbers
+not present in the file — size positions sensibly within `max_position_pct`,
+and don't feel obligated to trade if nothing looks good — an empty trade list
+is a valid, often correct, decision.
 
 ## 3. Write your decision to `decision.json`
 
@@ -100,5 +142,10 @@ don't commit them (they're gitignored).
   you've set up for this session.
 - If `prepare_data.py` reports stale prices or a fetch failure, re-run it
   before proceeding — don't decide trades on data you know is bad.
+- Fundamentals fetches (`.info` per ticker) are slower and flakier than the
+  bulk price/history fetches — if `today_data.json` notes missing
+  fundamentals for a handful of candidates, that's expected Yahoo coverage
+  gaps, not a failure; only stop and report if the run fails outright or
+  candidates come back empty.
 - See `README.md` for the overall project shape and `config.py` for the
-  current risk limits and starting cash.
+  current risk limits, starting cash, and prescreen/candidate pool sizes.
