@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Trader1 Portal</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #0f1115;
+    --panel: #171a21;
+    --border: #2a2f3a;
+    --text: #e8eaed;
+    --muted: #9aa3af;
+    --green: #4caf50;
+    --red: #ef5350;
+    --accent: #5b8def;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px;
+  }
+  h1 { font-size: 1.4rem; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 20px; font-size: 0.9rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .card .label { color: var(--muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  .card .value { font-size: 1.4rem; font-weight: 600; margin-top: 4px; }
+  .pos { color: var(--green); }
+  .neg { color: var(--red); }
+  section { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 20px; }
+  section h2 { margin: 0 0 12px; font-size: 1rem; }
+  img.chart { width: 100%; border-radius: 6px; background: #fff; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th, td { text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  th:first-child, td:first-child, th.left, td.left { text-align: left; }
+  th { color: var(--muted); font-weight: 500; }
+  .controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  button {
+    background: var(--accent); color: #fff; border: none; border-radius: 8px;
+    padding: 10px 16px; font-size: 0.9rem; cursor: pointer; font-weight: 600;
+  }
+  button.secondary { background: #3a3f4b; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  #status { margin-top: 14px; font-size: 0.85rem; color: var(--muted); white-space: pre-wrap; }
+  .step { margin-bottom: 6px; }
+  .step .name { font-weight: 600; }
+  .step.running .name::after { content: " \2026running"; color: var(--accent); }
+  .step.done .name::after { content: " \2713"; color: var(--green); }
+  .step.failed .name::after { content: " \2717 failed"; color: var(--red); }
+  pre { white-space: pre-wrap; background: #0d0f13; padding: 8px; border-radius: 6px; font-size: 0.75rem; max-height: 160px; overflow: auto; margin: 4px 0 0; }
+  #reportError { color: var(--red); }
+</style>
+</head>
+<body>
+  <h1>Trader1 Paper Trading Portal</h1>
+  <p class="sub">Local dashboard &mdash; reads and runs the scripts in this repo directly on your machine.</p>
+
+  <div id="reportError"></div>
+
+  <div class="grid" id="summaryCards"></div>
+
+  <section>
+    <h2>Value over time</h2>
+    <img class="chart" id="chartImg" src="/performance_chart.svg" alt="Portfolio performance chart">
+  </section>
+
+  <section>
+    <h2>Run the pipeline</h2>
+    <div class="controls">
+      <button id="btnRefresh">Refresh market data</button>
+      <button id="btnFull" class="secondary">Run full pipeline (fetch + decide + trade)</button>
+    </div>
+    <div id="status"></div>
+  </section>
+
+  <section>
+    <h2>Current holdings</h2>
+    <table id="holdingsTable">
+      <thead><tr><th class="left">Ticker</th><th>Shares</th><th>Avg cost</th><th>Current price</th><th>Market value</th><th>Gain/loss</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Recent trades</h2>
+    <table id="tradesTable">
+      <thead><tr><th class="left">Date</th><th class="left">Action</th><th>Shares</th><th class="left">Ticker</th><th>Price</th><th class="left">Reason</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+<script>
+const fmtMoney = x => x == null ? "n/a" : "$" + Number(x).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const fmtPct = x => x == null ? "n/a" : (x >= 0 ? "+" : "") + Number(x).toFixed(2) + "%";
+const cls = x => x == null ? "" : (x >= 0 ? "pos" : "neg");
+
+async function loadReport() {
+  const errEl = document.getElementById("reportError");
+  try {
+    const res = await fetch("/api/report?t=" + Date.now());
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      errEl.textContent = body.error || "Could not load report.";
+      return;
+    }
+    errEl.textContent = "";
+    const data = await res.json();
+    renderSummary(data);
+    renderHoldings(data.positions || []);
+    renderTrades(data.recent_trades || []);
+  } catch (e) {
+    errEl.textContent = "Could not reach the portal server.";
+  }
+}
+
+function renderSummary(d) {
+  const diff = d.total_return_pct - d.bench_return_pct;
+  const cards = [
+    ["Current value", fmtMoney(d.current_value), ""],
+    ["Total return", fmtPct(d.total_return_pct), cls(d.total_return_pct)],
+    [`${d.bench_ticker} return`, fmtPct(d.bench_return_pct), cls(d.bench_return_pct)],
+    ["vs benchmark", fmtPct(diff), cls(diff)],
+    ["Cash on hand", fmtMoney(d.cash), ""],
+  ];
+  document.getElementById("summaryCards").innerHTML = cards.map(([label, value, c]) =>
+    `<div class="card"><div class="label">${label}</div><div class="value ${c}">${value}</div></div>`
+  ).join("");
+}
+
+function renderHoldings(positions) {
+  const tbody = document.querySelector("#holdingsTable tbody");
+  if (!positions.length) {
+    tbody.innerHTML = `<tr><td colspan="6" class="left">No open positions &mdash; fully in cash.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = positions.map(p => `
+    <tr>
+      <td class="left">${p.ticker}</td>
+      <td>${Number(p.shares).toFixed(2)}</td>
+      <td>${fmtMoney(p.avg_cost)}</td>
+      <td>${fmtMoney(p.current_price)}</td>
+      <td>${fmtMoney(p.market_value)}</td>
+      <td class="${cls(p.gain_loss)}">${fmtMoney(p.gain_loss)} (${fmtPct(p.gain_loss_pct)})</td>
+    </tr>`).join("");
+}
+
+function renderTrades(trades) {
+  const tbody = document.querySelector("#tradesTable tbody");
+  if (!trades.length) {
+    tbody.innerHTML = `<tr><td colspan="6" class="left">No trades yet.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = trades.map(t => `
+    <tr>
+      <td class="left">${t.date}</td>
+      <td class="left">${(t.action || "").toUpperCase()}</td>
+      <td>${Number(t.shares).toFixed(2)}</td>
+      <td class="left">${t.ticker}</td>
+      <td>${fmtMoney(t.price)}</td>
+      <td class="left">${t.reason || ""}</td>
+    </tr>`).join("");
+}
+
+let polling = null;
+
+function renderJob(job) {
+  const el = document.getElementById("status");
+  if (job.status === "idle") { el.textContent = ""; return; }
+
+  const lines = [`Status: ${job.status}${job.mode ? " (" + job.mode + ")" : ""}`];
+  el.innerHTML = lines.join("\n") + "\n" + (job.steps || []).map(s =>
+    `<div class="step ${s.status}"><span class="name">${s.name}</span>` +
+    (s.status === "failed" && s.output ? `<pre>${escapeHtml(s.output.slice(-2000))}</pre>` : "") +
+    `</div>`
+  ).join("");
+
+  if (job.status === "error") {
+    el.innerHTML += `<div class="neg">Error: ${escapeHtml(job.error || "unknown error")}</div>`;
+  }
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+}
+
+function setButtonsDisabled(disabled) {
+  document.getElementById("btnRefresh").disabled = disabled;
+  document.getElementById("btnFull").disabled = disabled;
+}
+
+async function pollJob() {
+  const res = await fetch("/api/job?t=" + Date.now());
+  const job = await res.json();
+  renderJob(job);
+  if (job.status === "running") {
+    setButtonsDisabled(true);
+    polling = setTimeout(pollJob, 1500);
+  } else {
+    setButtonsDisabled(false);
+    if (job.status === "done") {
+      document.getElementById("chartImg").src = "/performance_chart.svg?t=" + Date.now();
+      loadReport();
+    }
+  }
+}
+
+async function startRun(mode) {
+  if (mode === "full") {
+    const ok = confirm(
+      "This runs decide_trades.py -- a fixed scoring rule, not an LLM -- to " +
+      "propose trades, then executes whatever passes the risk checks in " +
+      "apply_trades.py. Continue?"
+    );
+    if (!ok) return;
+  }
+  const res = await fetch(`/api/run/${mode}`, { method: "POST" });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    alert(body.error || "Could not start the run.");
+    return;
+  }
+  pollJob();
+}
+
+document.getElementById("btnRefresh").addEventListener("click", () => startRun("refresh"));
+document.getElementById("btnFull").addEventListener("click", () => startRun("full"));
+
+loadReport();
+pollJob();
+</script>
+</body>
+</html>
