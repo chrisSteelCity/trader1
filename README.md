@@ -6,8 +6,16 @@ buy, sell, or hold from a watchlist. Trades are simulated only — no real
 money or broker is involved. Everything is tracked in `portfolio.json` so you
 can see performance over time vs. the S&P 500 (SPY).
 
+The tradeable universe is the full S&P 500 (fetched from Wikipedia and cached
+locally, `universe.py`), which covers most large-cap NYSE-listed stocks. Since
+that's too large to fit in a single prompt, each day's run narrows it down to
+the `CANDIDATE_COUNT` (default 40) biggest movers plus anything already held,
+and only those are shown to Claude / eligible to trade that day — enforced in
+`portfolio.py`, not just requested in the prompt.
+
 ## Files
 - `config.py` — starting cash, watchlist, risk limits, which Claude model to use
+- `universe.py` — fetches/caches the S&P 500 ticker list used as the tradeable universe
 - `portfolio.py` — portfolio state + trade validation/execution logic
 - `daily_run.py` — the script that runs once per day
 - `report.py` — prints performance so far, optional chart
@@ -76,3 +84,7 @@ why).
 - Price data comes from `yfinance` (Yahoo Finance), which is free but
   occasionally has outages or delisted-ticker quirks — worth glancing at
   `agent.log` / Action run logs periodically.
+- The S&P 500 list is fetched from Wikipedia and cached in `sp500_cache.json`
+  (gitignored, refreshed weekly) so a Wikipedia hiccup doesn't fail every
+  run; if both the cache and the live fetch fail, it falls back to a small
+  static list defined in `universe.py`.

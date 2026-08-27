@@ -48,17 +48,28 @@ def total_value(portfolio, prices):
     return portfolio["cash"] + positions_value(portfolio, prices)
 
 
-def execute_trades(portfolio, decisions, prices):
+def execute_trades(portfolio, decisions, prices, allowed_tickers=None, valuation_prices=None):
     """
     decisions: list of dicts like
         {"ticker": "AAPL", "action": "buy"|"sell", "shares": 3, "reason": "..."}
     Validates each against risk rules in config, executes what's valid,
     and returns a list of result dicts describing what happened.
+
+    allowed_tickers: if given, restricts which tickers may be traded (e.g.
+    today's candidate list), enforced here rather than just requested in the
+    prompt, same as the other risk rules.
+
+    valuation_prices: prices used to compute total portfolio value for the
+    position-size/cash-buffer checks. Defaults to `prices`, but should be
+    passed separately whenever `prices` doesn't cover every held position
+    (e.g. a candidate subset of a larger universe) so those checks aren't
+    skewed by silently-excluded holdings.
     """
     results = []
     today = str(date.today())
-    port_value = total_value(portfolio, prices)
+    port_value = total_value(portfolio, valuation_prices if valuation_prices is not None else prices)
     trades_done = 0
+    allowed = set(allowed_tickers) if allowed_tickers is not None else None
 
     for d in decisions:
         if trades_done >= config.MAX_TRADES_PER_DAY:
@@ -70,6 +81,9 @@ def execute_trades(portfolio, decisions, prices):
         shares = float(d.get("shares", 0))
         price = prices.get(ticker)
 
+        if allowed is not None and ticker not in allowed:
+            results.append({**d, "status": "rejected", "why": "ticker not in today's tradeable candidates"})
+            continue
         if not price:
             results.append({**d, "status": "rejected", "why": "no price data for ticker"})
             continue
