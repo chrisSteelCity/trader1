@@ -1,0 +1,6 @@
+date,ticker,action,shares,price,status,why,reason
+2026-08-27,FCX,buy,19,79.0,executed,,"Steady, near-monotonic 10-day uptrend (+18%) in copper miner; no signs of a blow-off spike, just consistent grind higher."
+2026-08-27,NEM,buy,11,131.60000610351562,executed,,"Consistent 10-day uptrend (+15%) in gold miner with only minor pullbacks, suggesting sustained demand rather than a one-day pop."
+2026-08-27,DASH,buy,6,236.92999267578125,executed,,"Smooth, almost uninterrupted climb over 10 days (+9.6%), among the least choppy uptrends in the candidate list."
+2026-08-27,TRGP,buy,5,294.0299987792969,executed,,"Steady energy-infrastructure uptrend (+10%) with shallow pullbacks, adds sector diversification away from metals."
+2026-08-27,CTVA,buy,12,82.87999725341797,executed,,"Gradual, low-volatility 10-day uptrend (+9.4%) in ag inputs; least commodity-price-driven of the group, further diversifying the basket."

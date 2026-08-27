@@ -4,13 +4,18 @@ instead of a small fixed watchlist) and caches it to disk so the agent
 doesn't need network access to Wikipedia on every run.
 """
 
+import io
 import json
 import os
 import time
 
 import pandas as pd
+import requests
 
 SP500_WIKI_URL = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
+# Wikipedia's edge returns 403 to requests with no User-Agent (pandas.read_html's
+# default urllib request has none) — a plain browser-style UA is enough to pass.
+_WIKI_HEADERS = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
 CACHE_FILE = "sp500_cache.json"
 CACHE_MAX_AGE_DAYS = 7
 
@@ -29,7 +34,9 @@ def _normalize_ticker(symbol):
 
 
 def _fetch_live():
-    tables = pd.read_html(SP500_WIKI_URL)
+    resp = requests.get(SP500_WIKI_URL, headers=_WIKI_HEADERS, timeout=15)
+    resp.raise_for_status()
+    tables = pd.read_html(io.StringIO(resp.text))
     df = tables[0]
     return sorted({_normalize_ticker(s) for s in df["Symbol"].tolist()})
 
