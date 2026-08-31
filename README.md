@@ -100,8 +100,10 @@ this folder and runs the existing scripts as subprocesses:
 
 `ml/` holds a first pass at replacing `decide_trades.py`'s hand-weighted
 scoring rule with a genuine trained model: a 3-way (BUY/HOLD/SELL)
-classifier trained on ~2-3 years of historical price/volume data across a
-sample of ~120 S&P 500 tickers.
+classifier trained on 10 years of historical price/volume data across a
+sample of ~120 S&P 500 tickers (widened from an initial 3-year version so
+training data spans multiple market regimes — the 2018 selloff, the 2020
+COVID crash/recovery, and the 2022 bear market — not just one bull run).
 
 ```bash
 python ml/build_dataset.py   # fetches history, engineers features, writes ml/dataset.csv (not committed — see below)
@@ -110,14 +112,19 @@ python ml/train_model.py     # chronological train/test split, trains, writes ml
 
 Read `ml/REPORT.md` for the full write-up: setup, classification metrics,
 feature importance, a simulated-trading comparison against buy-and-hold, and
-an explicit caveats section. Short version: on this proof-of-concept's
-holdout period the model beat a "always guess the majority class" baseline
-only marginally, and its BUY calls did **not** outperform SPY out of sample
-— an honest negative-ish result worth showing rather than hiding. It is
-**not** wired into `decide_trades.py` or the portal, and no fundamentals are
-used as features (yfinance only exposes a ticker's *current* fundamentals,
-not what they were on a past date, so using them for historical training
-rows would leak future information — see the caveats section for detail).
+an explicit caveats section. Short version: accuracy (36.5%) is still barely
+above the "always guess HOLD" baseline (34.2%), but with the longer history
+the model's BUY calls edged out SPY out of sample (+0.13 percentage points),
+a reversal from the original 3-year version where BUY calls underperformed.
+That's a small, likely noisy improvement, not a validated edge — the
+held-out test window is still just one recent stretch (2024–2026, mostly a
+bull run), so it doesn't show how the model would hold up in a downturn; see
+the caveats section for what a more thorough validation would need (e.g.
+walk-forward testing across several regimes). It is **not** wired into
+`decide_trades.py` or the portal, and no fundamentals are used as features
+(yfinance only exposes a ticker's *current* fundamentals, not what they were
+on a past date, so using them for historical training rows would leak future
+information — see the caveats section for detail).
 
 `ml/dataset.csv` (~25MB) and `ml/model.joblib` are build artifacts, generated
 by the two scripts above rather than committed to the repo — regenerate them

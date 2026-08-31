@@ -36,7 +36,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 ML_DIR = Path(__file__).resolve().parent
 
 TICKER_COUNT = 120
-HISTORY_PERIOD = "3y"
+HISTORY_PERIOD = "10y"  # widened from 3y to span multiple market regimes
+                        # (2018 selloff, 2020 COVID crash/recovery, 2022 bear
+                        # market, 2023-25 bull run) rather than one stretch
 LABEL_HORIZON_DAYS = 10   # forward-looking window for the label
 BUY_QUANTILE = 0.70       # top 30% of excess returns -> BUY
 SELL_QUANTILE = 0.30      # bottom 30% of excess returns -> SELL
