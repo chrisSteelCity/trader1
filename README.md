@@ -34,6 +34,7 @@ the portal section below.
 - `TRADING_INSTRUCTIONS.md` — the procedure Claude follows each scheduled run
 - `report.py` — prints performance so far, to the terminal
 - `portal.py` / `portal_static/` — local browser dashboard (see below)
+- `ml/` — proof-of-concept ML classifier, not yet used by any of the above (see below)
 
 ## 1. Local setup
 
@@ -95,6 +96,33 @@ this folder and runs the existing scripts as subprocesses:
   session reading it — treat its trades as a fixed-rule proposal, not
   investment reasoning.
 
+## 5. ML proof-of-concept (not yet integrated)
+
+`ml/` holds a first pass at replacing `decide_trades.py`'s hand-weighted
+scoring rule with a genuine trained model: a 3-way (BUY/HOLD/SELL)
+classifier trained on ~2-3 years of historical price/volume data across a
+sample of ~120 S&P 500 tickers.
+
+```bash
+python ml/build_dataset.py   # fetches history, engineers features, writes ml/dataset.csv (not committed — see below)
+python ml/train_model.py     # chronological train/test split, trains, writes ml/REPORT.md + ml/model.joblib
+```
+
+Read `ml/REPORT.md` for the full write-up: setup, classification metrics,
+feature importance, a simulated-trading comparison against buy-and-hold, and
+an explicit caveats section. Short version: on this proof-of-concept's
+holdout period the model beat a "always guess the majority class" baseline
+only marginally, and its BUY calls did **not** outperform SPY out of sample
+— an honest negative-ish result worth showing rather than hiding. It is
+**not** wired into `decide_trades.py` or the portal, and no fundamentals are
+used as features (yfinance only exposes a ticker's *current* fundamentals,
+not what they were on a past date, so using them for historical training
+rows would leak future information — see the caveats section for detail).
+
+`ml/dataset.csv` (~25MB) and `ml/model.joblib` are build artifacts, generated
+by the two scripts above rather than committed to the repo — regenerate them
+locally by running `build_dataset.py` then `train_model.py`.
+
 ## How performance tracking works
 
 Each run appends a snapshot to `portfolio.json`'s `daily_history`: total
@@ -108,7 +136,8 @@ rejected, with why).
 - This is a simulation for learning/tracking purposes, not investment advice,
   and neither Claude's daily picks nor `decide_trades.py`'s fixed rule are a
   validated trading strategy — treat the results as an experiment, not a
-  signal to trade real money.
+  signal to trade real money. The `ml/` proof-of-concept is even earlier
+  stage than that — see `ml/REPORT.md`'s caveats.
 - Risk limits (position size cap, cash buffer, daily trade cap) are enforced
   in `portfolio.py`, not just requested from Claude, so they can't be talked
   around by the model's own reasoning, and apply the same way to

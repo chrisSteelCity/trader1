@@ -1,0 +1,22 @@
+{
+  "feature_cols": [
+    "ret_5d",
+    "ret_10d",
+    "ret_20d",
+    "ret_60d",
+    "vol_20d",
+    "sma20_ratio",
+    "sma50_ratio",
+    "sma_cross",
+    "rsi_14",
+    "dist_from_high",
+    "volume_ratio"
+  ],
+  "label_horizon_days": 10,
+  "buy_cut": 0.022064249454770642,
+  "sell_cut": -0.02770068344882799,
+  "benchmark": "SPY",
+  "universe_size": 120,
+  "history_period": "3y",
+  "seed": 42
+}
