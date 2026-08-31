@@ -99,36 +99,54 @@ this folder and runs the existing scripts as subprocesses:
 ## 5. ML proof-of-concept (not yet integrated)
 
 `ml/` holds a first pass at replacing `decide_trades.py`'s hand-weighted
-scoring rule with a genuine trained model: a 3-way (BUY/HOLD/SELL)
-classifier trained on 10 years of historical price/volume data across a
-sample of ~120 S&P 500 tickers (widened from an initial 3-year version so
-training data spans multiple market regimes — the 2018 selloff, the 2020
-COVID crash/recovery, and the 2022 bear market — not just one bull run).
+scoring rule with a genuine trained model: a 3-way (BUY/HOLD/SELL) classifier
+on price/volume-only technical features (deliberately no fundamentals —
+yfinance only exposes a ticker's *current* fundamentals, not what they were
+on a past date, so using them for historical training rows would leak future
+information into the past).
 
 ```bash
-python ml/build_dataset.py   # fetches history, engineers features, writes ml/dataset.csv (not committed — see below)
-python ml/train_model.py     # chronological train/test split, trains, writes ml/REPORT.md + ml/model.joblib
+python ml/build_dataset.py     # fetches each ticker's full available history, engineers features, writes ml/dataset.csv (not committed — see below)
+python ml/train_model.py       # single chronological train/test split, writes ml/REPORT.md + ml/model.joblib
+python ml/train_walkforward.py # expanding-window walk-forward across ~25 years, writes ml/WALKFORWARD_REPORT.md + ml/model_walkforward.joblib
 ```
 
-Read `ml/REPORT.md` for the full write-up: setup, classification metrics,
-feature importance, a simulated-trading comparison against buy-and-hold, and
-an explicit caveats section. Short version: accuracy (36.5%) is still barely
-above the "always guess HOLD" baseline (34.2%), but with the longer history
-the model's BUY calls edged out SPY out of sample (+0.13 percentage points),
-a reversal from the original 3-year version where BUY calls underperformed.
-That's a small, likely noisy improvement, not a validated edge — the
-held-out test window is still just one recent stretch (2024–2026, mostly a
-bull run), so it doesn't show how the model would hold up in a downturn; see
-the caveats section for what a more thorough validation would need (e.g.
-walk-forward testing across several regimes). It is **not** wired into
-`decide_trades.py` or the portal, and no fundamentals are used as features
-(yfinance only exposes a ticker's *current* fundamentals, not what they were
-on a past date, so using them for historical training rows would leak future
-information — see the caveats section for detail).
+There are two evaluation reports, because the first one wasn't rigorous
+enough on its own:
 
-`ml/dataset.csv` (~25MB) and `ml/model.joblib` are build artifacts, generated
-by the two scripts above rather than committed to the repo — regenerate them
-locally by running `build_dataset.py` then `train_model.py`.
+- **`ml/REPORT.md`** — a single chronological train/test split on 10 years of
+  history. Accuracy (36.5%) is barely above the "always guess HOLD" baseline
+  (34.2%), and BUY calls edged out SPY by only +0.13 percentage points out of
+  sample. The catch: the one held-out test window (2024–2026) was mostly a
+  bull run, so this alone doesn't show how the model would do in a downturn.
+- **`ml/WALKFORWARD_REPORT.md`** — the more thorough answer to that gap.
+  `build_dataset.py` now pulls each ticker's *full* available price history
+  (`period="max"`, reaching into the 1960s-80s for old names like KO or AAPL),
+  and `train_walkforward.py` retrains the model once per calendar year in an
+  expanding window (train on everything before year Y, test only on Y),
+  refitting BUY/SELL label cutoffs from each fold's own training data so
+  later years' data can't leak into earlier folds' labels. Across 27 yearly
+  folds from 2000–2026, BUY calls beat SPY in 24/27 years — and in **all 6**
+  years SPY itself was down (2000, 2001, 2002, 2008, 2018, 2022). That's a
+  meaningfully stronger result than the single-split version, but it comes
+  with real caveats specific to reaching that far back: SPY itself only
+  launched in 1993 (so no labeled row exists before then, even for tickers
+  with longer price history), and the ticker universe is sampled from
+  *today's* S&P 500 list, so it can only ever see companies that survived
+  long enough to still be in the index now — there's no free source of
+  point-in-time historical index membership to fix that survivorship bias.
+  Read the report's caveats section for the rest (market-structure changes
+  across decades, no transaction costs/position sizing, hyperparameters
+  fixed rather than tuned).
+
+Both are **not** wired into `decide_trades.py` or the portal — they're
+validation exercises, not a strategy ready to trade with, even on paper.
+
+`ml/dataset.csv` (~250MB with full history), `ml/model.joblib`, and
+`ml/model_walkforward.joblib` are build artifacts, generated by the scripts
+above rather than committed to the repo — regenerate them locally by running
+`build_dataset.py` then either training script. `ml/walkforward_folds.csv`
+(the small per-year numbers behind the walk-forward table) is committed.
 
 ## How performance tracking works
 

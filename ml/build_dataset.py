@@ -16,6 +16,25 @@ not the full index, to keep runtime and data volume manageable for a
 proof-of-concept. Sampled deterministically (fixed seed) from sp500_cache.json
 so the run is reproducible.
 
+HISTORY_PERIOD = "max" pulls each ticker's FULL available history from
+yfinance -- for old names like KO or AAPL that reaches back to the 1960s-80s,
+for others (NVDA, GOOGL, TSLA, MRNA, ...) it only reaches to their IPO. Two
+honest limits worth knowing before reading too much into "back to the 80s":
+
+1. SPY (used as the benchmark for the excess-return label) only launched in
+   January 1993. Price history before that is still used to compute a
+   ticker's own technical features (a 1994 60-day return can look back into
+   1993 data), but no LABELED row exists before 1993 -- there's no benchmark
+   to compare against.
+2. This universe is sampled from TODAY's S&P 500 constituent list. Reaching
+   deep into history like this only sees companies that survived, grew, and
+   stayed in the index long enough to still be there now -- it can't see
+   companies that were delisted, went bankrupt, or got acquired along the
+   way. That's real survivorship bias baked into any free-data historical
+   backtest like this one; there's no point-in-time index-membership data
+   source available for free to fix it. Documented, not hidden -- see
+   ml/WALKFORWARD_REPORT.md's caveats.
+
 Output: ml/dataset.csv with one row per (ticker, date) containing features
 computed using only data up to and including that date, plus a label derived
 from the forward return over the following LABEL_HORIZON_DAYS trading days
@@ -36,9 +55,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 ML_DIR = Path(__file__).resolve().parent
 
 TICKER_COUNT = 120
-HISTORY_PERIOD = "10y"  # widened from 3y to span multiple market regimes
-                        # (2018 selloff, 2020 COVID crash/recovery, 2022 bear
-                        # market, 2023-25 bull run) rather than one stretch
+HISTORY_PERIOD = "max"  # each ticker's full available history (see docstring
+                        # above for the SPY-1993 and survivorship-bias caveats
+                        # this implies)
 LABEL_HORIZON_DAYS = 10   # forward-looking window for the label
 BUY_QUANTILE = 0.70       # top 30% of excess returns -> BUY
 SELL_QUANTILE = 0.30      # bottom 30% of excess returns -> SELL

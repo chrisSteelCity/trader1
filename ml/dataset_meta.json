@@ -13,10 +13,10 @@
     "volume_ratio"
   ],
   "label_horizon_days": 10,
-  "buy_cut": 0.020901100387265847,
-  "sell_cut": -0.022099455545776237,
+  "buy_cut": 0.022481642710719986,
+  "sell_cut": -0.020575643059875363,
   "benchmark": "SPY",
   "universe_size": 120,
-  "history_period": "10y",
+  "history_period": "max",
   "seed": 42
 }
